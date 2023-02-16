@@ -2,7 +2,7 @@ import os
 import uuid
 import logging
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Thread
 import requests
 
@@ -56,7 +56,7 @@ class Job:
 
     def __process(self):
         if not self.tread:
-            self.tread = Thread(target=self._get_data)
+            self.tread = Thread(target=self._get_data, daemon=True)
             self.tread.start()
 
         if self.status == JobStatuses.FAULT:
@@ -76,7 +76,10 @@ class Job:
         if not self.actual_start_time:
             self.actual_start_time = now
 
-        # TODO Добавить проверку на то что мы не превысили время выполнения задачи
+        if self.max_working_time >= 0 and self.actual_start_time + timedelta(seconds=self.max_working_time) < now:
+            logger.warning(f'{self.name}: time ({self.max_working_time} sec.) is over')
+            self.status = JobStatuses.FAULT
+            return
 
         if self.status == JobStatuses.NOT_STARTED:
             logger.info(f'Start {self.name}')
@@ -124,9 +127,11 @@ class DirectoryJob(Job):
                 os.renames(f'{path}/{self.dir_name}', f'{path}/{self.new_dir_name}')
                 self.status = JobStatuses.SUCCESS
 
-            elif self.job_type == DirectoryJobStatuses.DELETE:
-                # FIXME Исправить удаление директорий
-                #   На данный момент корректно удаляются только файлы
+            elif self.job_type == DirectoryJobStatuses.DELETE_DIR:
+                os.rmdir(f'{path}/{self.dir_name}')
+                self.status = JobStatuses.SUCCESS
+
+            elif self.job_type == DirectoryJobStatuses.DELETE_FILE:
                 os.remove(f'{path}/{self.dir_name}')
                 self.status = JobStatuses.SUCCESS
 
@@ -205,4 +210,3 @@ class GetFromURLJob(Job):
             self.status = JobStatuses.SUCCESS
         else:
             self.status = JobStatuses.FAULT
-        return

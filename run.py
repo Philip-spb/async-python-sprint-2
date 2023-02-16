@@ -1,17 +1,22 @@
-from helpers import FileJobStatuses, DirectoryJobStatuses
+import logging
+
+from helpers import FileJobStatuses, DirectoryJobStatuses, JobTree
 from job import DirectoryJob, FileJob, GetFromURLJob
 from scheduler import Scheduler
+
+logger = logging.getLogger()
 
 if __name__ == '__main__':
     job0 = GetFromURLJob(
         name='job0',
         tries=5,
-        url='https://mobimg.b-cdn.net/v3/fetch/8f/8f84ade8f5c56c6292d642a7b97c6f93.jpeg'
+        url='https://mobimg.b-cdn.net/v3/fetch/8f/8f84ade8f5c56c6292d642a7b97c6f93.jpeg',
+        max_working_time=2
     )
 
     job1 = DirectoryJob(
         name='job1',
-        job_type=DirectoryJobStatuses.DELETE,
+        job_type=DirectoryJobStatuses.DELETE_DIR,
         dir_name='HELLO',
     )
 
@@ -25,24 +30,29 @@ if __name__ == '__main__':
 
     job3 = FileJob(
         name='job3',
-        job_type=FileJobStatuses.READ,
+        job_type=FileJobStatuses.WRITE,
+        file_name='test.txt',
+        file_dir='test',
         tries=7,
-        start_at='2023-02-14 10:07:30'
+        start_at='2023-02-14 10:07:30',
+        dependencies=[job2, ]
     )
 
     job4 = GetFromURLJob(
         name='job4',
         tries=5,
-        url='https://ya.ru'
-        # url='https://mobimg.b-cdn.net/v3/fetch/8f/8f84ade8f5c56c6292d642a7b97c6f93.jpeg'
+        url='https://ya.ru',
+        # url='https://mobimg.b-cdn.net/v3/fetch/8f/8f84ade8f5c56c6292d642a7b97c6f93.jpeg',
+        dependencies=[job3, ]
     )
 
     job5 = DirectoryJob(
         name='job5',
-        job_type=DirectoryJobStatuses.DELETE,
+        job_type=DirectoryJobStatuses.DELETE_FILE,
         dir_name='test.txt',
         extra_dir='HELLO',
         # tries=5,
+        dependencies=[job2, ]
     )
 
     job6 = DirectoryJob(
@@ -61,20 +71,8 @@ if __name__ == '__main__':
         dependencies=[job6, ]
     )
 
-    job8 = FileJob(
-        name='job8',
-        file_dir='HELLO/',
-        dependencies=[job4, ]
-    )
-
-
-    # job8 = FileJob(name='job8', dependencies=[job4, ])
-    # job9 = FileJob(name='job9', dependencies=[job4, ])
-    # job10 = FileJob(name='job10', dependencies=[job4, ])
-    # job11 = FileJob(name='job11', dependencies=[job4, ])
-    # job12 = FileJob(name='job12', dependencies=[job4, ])
-
     scheduler = Scheduler(pool_size=5)
+
     scheduler.schedule(job0)
     scheduler.schedule(job1)
     scheduler.schedule(job2)
@@ -83,13 +81,26 @@ if __name__ == '__main__':
     scheduler.schedule(job5)
     scheduler.schedule(job6)
     scheduler.schedule(job7)
-    # scheduler.schedule(job8)
-
-    # scheduler.schedule(job9)
-    # scheduler.schedule(job10)
-    # scheduler.schedule(job11)
-    # scheduler.schedule(job12)
-
-    # print(JobTree.get_leafs())
 
     scheduler.run()
+
+    logger.info(f'{scheduler.success_pool=}')
+    logger.info(f'{scheduler.fault_pool=}')
+
+
+if __name__ == '__main1__':
+
+    job1 = FileJob(name='job1')
+    job2 = FileJob(name='job2', dependencies=[job1, ])
+    job3 = FileJob(name='job3', dependencies=[job2, ])
+    job4 = FileJob(name='job4', dependencies=[job3, ])
+    job5 = FileJob(name='job5', dependencies=[job4, job3])
+
+    scheduler = Scheduler(pool_size=5)
+    scheduler.schedule(job1)
+    scheduler.schedule(job2)
+    scheduler.schedule(job3)
+    scheduler.schedule(job4)
+    scheduler.schedule(job5)
+
+    print(JobTree.get_node(job1).get_descendants())
