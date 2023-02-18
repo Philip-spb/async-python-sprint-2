@@ -1,6 +1,6 @@
 import logging
 
-from helpers import FileJobStatuses, DirectoryJobStatuses, JobTree
+from helpers import FileJobStatuses, DirectoryJobStatuses
 from job import DirectoryJob, FileJob, GetFromURLJob
 from scheduler import Scheduler
 
@@ -86,21 +86,3 @@ if __name__ == '__main__':
 
     logger.info(f'{scheduler.success_pool=}')
     logger.info(f'{scheduler.fault_pool=}')
-
-
-if __name__ == '__main1__':
-
-    job1 = FileJob(name='job1')
-    job2 = FileJob(name='job2', dependencies=[job1, ])
-    job3 = FileJob(name='job3', dependencies=[job2, ])
-    job4 = FileJob(name='job4', dependencies=[job3, ])
-    job5 = FileJob(name='job5', dependencies=[job4, job3])
-
-    scheduler = Scheduler(pool_size=5)
-    scheduler.schedule(job1)
-    scheduler.schedule(job2)
-    scheduler.schedule(job3)
-    scheduler.schedule(job4)
-    scheduler.schedule(job5)
-
-    print(JobTree.get_node(job1).get_descendants())

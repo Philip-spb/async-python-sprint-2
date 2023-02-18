@@ -1,6 +1,8 @@
+import json
 import logging
+from typing import Optional, List
 
-from helpers import JobTree, JobStatuses, JobFaultException
+from helpers import JobTree, JobStatuses, JobFaultException, DUMP_FILE_NAME
 
 logger = logging.getLogger()
 
@@ -12,6 +14,47 @@ class Scheduler:
         self.pool_size = pool_size
         self.success_pool = []
         self.fault_pool = []
+
+    def __del__(self):
+        """
+        Если имеются незавершенные задачи - сохраняем список завершенных задач в файл
+        """
+        with open(DUMP_FILE_NAME, 'w') as file:
+            file.write(self.__get_jobs_if_fault())
+
+    def __get_jobs_if_fault(self) -> Optional[str]:
+        """
+        Если не все задачи выполнились - возвращаем список выполненных задач
+        """
+        has_unfinished_jobs = bool(JobTree.all_jobs())
+        finished_jobs = [
+            *self.success_pool,
+            *self.fault_pool
+        ]
+
+        dump = json.dumps(finished_jobs, default=lambda x: x.name)
+
+        return dump if has_unfinished_jobs else ''
+
+    @staticmethod
+    def _remove_jobs_from_dump(job_names: Optional[List[str]] = None) -> None:
+        """
+        Если в файле dump.json есть список выполненных задач - удаляем их из списка
+        Для целей тестирования используется jobs_lst - чтобы не открывать файл в процессе теста
+        """
+
+        if not job_names:
+            with open(DUMP_FILE_NAME, 'r') as file:
+                data = file.read()
+
+            if not data:
+                return None
+
+            job_names = json.loads(data)
+
+        for job in JobTree.all_jobs():
+            if job.name in job_names:
+                JobTree.delete(job)
 
     def schedule(self, task: 'Job'):
         parent_job = JobTree(task)
@@ -50,6 +93,13 @@ class Scheduler:
 
     def run(self):
 
+        # Перед стартом процесса выполнения задач проверяем наличие списка уже выполненных задач
+        #   в файле dump.json
+        #   Если они там есть - удаляем их из очереди
+        #   Если нет - ничего не делаем. Значит предыдущий процесс выполнения запустился без ошибок
+
+        self._remove_jobs_from_dump()
+
         self._fill_pool()
         while len(self.current_pool):
             job = self.current_pool.pop(0)
@@ -68,9 +118,3 @@ class Scheduler:
                 else:
                     self.__finish_job(job)
                     self._fill_pool()
-
-    # def restart(self):
-    #     pass
-    #
-    # def stop(self):
-    #     pass

@@ -1,12 +1,12 @@
 import os
-import uuid
 import logging
 from typing import Optional, List
 from datetime import datetime, timedelta
 from threading import Thread
 import requests
 
-from helpers import JobStatuses, JobFaultException, FileJobStatuses, DirectoryJobStatuses, WORK_DIR_NAME
+from helpers import (JobStatuses, JobFaultException, FileJobStatuses, DirectoryJobStatuses,
+                     WORK_DIR_NAME)
 
 logger = logging.getLogger()
 CWD = os.getcwd()
@@ -35,7 +35,7 @@ class Job:
                 logger.error(e)
 
         self.name = name
-        self.uuid = uuid.uuid4()
+        # self.uuid = uuid.uuid4()
         self.tread = None
         self.status = JobStatuses.NOT_STARTED
         self.tries = tries  # Сколько попыток дается задаче
@@ -43,10 +43,12 @@ class Job:
         self.actual_start_time = False  # Точное время в которое задача начала выполнение
         self.start_at = start_at_datetime  # В какое время необходимо стартовать задачу
         self.max_working_time = max_working_time  # Максимальное время отведенное задаче
-        self.dependencies = dependencies  # Список задач которые должны быть завершены перед стартом текущей задачи
+
+        # Список задач которые должны быть завершены перед стартом текущей задачи
+        self.dependencies = dependencies
 
     def __str__(self) -> str:
-        return self.name or str(self.uuid)
+        return self.name
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -76,7 +78,10 @@ class Job:
         if not self.actual_start_time:
             self.actual_start_time = now
 
-        if self.max_working_time >= 0 and self.actual_start_time + timedelta(seconds=self.max_working_time) < now:
+        if (
+                self.max_working_time >= 0
+                and self.actual_start_time + timedelta(seconds=self.max_working_time) < now
+        ):
             logger.warning(f'{self.name}: time ({self.max_working_time} sec.) is over')
             self.status = JobStatuses.FAULT
             return
@@ -86,12 +91,6 @@ class Job:
             self.status = JobStatuses.WORK
 
         yield from self.__process()
-
-    # def pause(self):
-    #     pass
-    #
-    # def stop(self):
-    #     pass
 
 
 class DirectoryJob(Job):

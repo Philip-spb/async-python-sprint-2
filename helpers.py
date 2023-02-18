@@ -10,6 +10,7 @@ logging.basicConfig(
 )
 
 WORK_DIR_NAME = 'work-dir'
+DUMP_FILE_NAME = 'dump.json'
 
 
 class JobFaultException(Exception):
@@ -35,7 +36,7 @@ class FileJobStatuses(IntEnum):
 class DirectoryJobStatuses(IntEnum):
     CREATE = 0          # Создание
     DELETE_DIR = 1      # Удаление директории
-    DELETE_FILE = 2     # Удаление директории
+    DELETE_FILE = 2     # Удаление файла
     RENAME = 3          # Переименование
 
 
@@ -129,7 +130,7 @@ class JobTree:
         return {node.job for node in nodes}
 
     @classmethod
-    def all_jobs(cls) -> set:
+    def all_jobs(cls) -> Set['Job']:
         return cls.get_jobs_from_nodes(cls.__registry)
 
     @classmethod
