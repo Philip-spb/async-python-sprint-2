@@ -2,3 +2,7 @@
 .idea/
 __pycache__/
 *.pyc
+venv
+application-log.log
+.pytest_cache
+dump.json

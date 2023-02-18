@@ -1,0 +1,2 @@
+runtest:
+	pytest -s -vv
